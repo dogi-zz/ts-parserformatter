@@ -1,5 +1,6 @@
 import { TreeItemToken, TreeItemNode, TreeItem, BaseSyntaxTree } from "./base-tree";
-import { BaseParserToken, getCorrectedLine } from "./base-parser";
+import { BaseParserToken } from "./base-parser";
+import { BaseTreeProcessor } from "./base-tree-processor";
 
 const DEBUG = false;
 
@@ -86,17 +87,17 @@ class FormatItemWalker<T> {
 
 }
 
-export abstract class BaseFormater<T> {
+export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
 
     private mainTreeItems: TreeItem<T>[] = [];
     private tokens: ExtendedToken<T>[] = [];
     private tokenMap: { [pos: string]: ExtendedToken<T> } = {};
 
+    private maxTokenIndex = 0;
+
     abstract process(): void;
 
-    protected stringifyToken(type: T, value: string): string {
-        return value;
-    }
+  
 
     format(tree: BaseSyntaxTree<T>): string {
         tree.items.forEach(treeItem => {
@@ -118,6 +119,7 @@ export abstract class BaseFormater<T> {
         treeItem.content.forEach(contentItem => {
             if (contentItem instanceof TreeItemToken && contentItem.token) {
                 let posId = '' + contentItem.token.pos[2];
+                this.maxTokenIndex = Math.max(this.maxTokenIndex, contentItem.token.pos[2]);
                 let extToken = new ExtendedToken(
                     contentItem.token.pos,
                     contentItem.token.type,
@@ -339,74 +341,38 @@ export abstract class BaseFormater<T> {
         this.getToken(token).marginRight = margin;
     }
 
+    public replaceTokenValue(token: BaseParserToken<T>, newValue: string) {
+        let posId = '' + token.pos[2];
+        this.tokenMap[posId].value = newValue;
+    }
+
+    public createToken(line: number, type: T, value: string): BaseParserToken<T> {
+        // let posId = '' + token.pos[2];
+        // this.tokenMap[posId].value = newValue;   
+        return {
+            pos: [line, 0, ++this.maxTokenIndex],
+            type: type,
+            value: value,
+        }
+    }
+
+
     // ==============================
     // ==== ITERATION AND GETTER ==== 
     // ==============================
 
-    private getToken(token: BaseParserToken<T>) {
+    private getToken(token: BaseParserToken<T>): ExtendedToken<T> {
         let posId = '' + token.pos[2];
         return this.tokenMap[posId];
     }
 
-    foreachTokensByName(item: TreeItem<T>, name: string, callback: (token: BaseParserToken<T>) => void) {
-        item.content.forEach(ci => {
-            if (ci instanceof TreeItemToken && ci.token && ci.name === name) { callback(ci.token); }
-        });
+    
+
+    getActualLine(token: BaseParserToken<T>): number {
+        let actToken = this.getToken(token);
+        return actToken.toLine;
     }
 
-    foreachTokenItemsByName(item: TreeItem<T>, name: string, callback: (tokenItem: TreeItemToken<T>) => void) {
-        item.content.forEach(ci => {
-            if (ci instanceof TreeItemToken && ci.token && ci.name === name) { callback(ci); }
-        });
-    }
-
-    foreachNodeChildsByName(item: TreeItem<T>, name: string, callback: (tokenItem: TreeItemNode<T>) => void) {
-        item.content.forEach(ci => {
-            if (ci instanceof TreeItemNode && ci.item && ci.name === name) { callback(ci); }
-        });
-    }
-
-    foreachTokenItemPairsByName(item: TreeItem<T>, fromTo: [string, string], callback: (from: TreeItemToken<T>, to: TreeItemToken<T>) => void) {
-        let [fromName, toName] = fromTo;
-        let from: TreeItemToken<T> | null = null;
-        item.content.forEach(ci => {
-            if (ci instanceof TreeItemToken && ci.token && ci.name === fromName) {
-                from = ci;
-            }
-            if (ci instanceof TreeItemToken && ci.token && ci.name === toName && from !== null) {
-                callback(from, ci);
-                from = null;
-            }
-        });
-    }
-
-
-    // foreachItemsByName(item: TreeItem<T>, name: string, callback: (item: TreeItem<T>) => void) {
-    //     item.content.forEach(ci => {
-    //         if (ci instanceof TreeItemNode && ci.item && ci.name === name) { callback(ci.item); }
-    //     });
-    // }
-    // foreachChildsByName(item: TreeItem<T>, name: string, callback: (item:TokenOrNode<T>) => void) {
-    //     item.content.forEach(ci => {
-    //         if (ci instanceof TreeItemNode && ci.item && ci.name === name) { callback(ci); }
-    //         if (ci instanceof TreeItemToken && ci.token && ci.name === name) { callback(ci); }
-    //     });
-    // }
-    // nextChildByName(item: TreeItem<T>, from:TokenOrNode<T>, name: string, callback: (item:TokenOrNode<T>) => void) {
-    //     item.content.slice(item.content.indexOf(from) + 1).some(ci => {
-    //         if (ci instanceof TreeItemNode && ci.item && ci.name === name) { callback(ci); return true; }
-    //         if (ci instanceof TreeItemToken && ci.token && ci.name === name) { callback(ci); return true; }
-    //         return false;
-    //     });
-    // }
-
-    // tokenPairs(item: TreeItem<T>, callback: (t1: BaseParserToken<T>, t2: BaseParserToken<T>, p1: [number, number], p2: [number, number]) => void) {
-    //     for (let i = 0; i < item.content.length - 1; i++) {
-    //         let token1 = item.content[i].lastToken();
-    //         let token2 = item.content[i + 1].firstToken();
-    //         if (token1 && token2) { callback(token1, token2, this.tokenPositions[token1.pos[2]], this.tokenPositions[token2.pos[2]]); }
-    //     }
-    // }
 
     // =============================================
     // === CONVENIENCE
