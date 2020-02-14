@@ -1,7 +1,6 @@
 import { ParserRuleRunner, ParserRuleFactory, AParserRule } from "./parser-rules";
 import { BaseSyntaxTree, TreeItem } from "./base-tree";
 import { ParserDebugItem } from "./base-parser-debug";
-import { getMaxListeners } from "cluster";
 
 //===========================================================
 //=== TOKEN =================================================

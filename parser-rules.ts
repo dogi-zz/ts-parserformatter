@@ -21,6 +21,7 @@ export class ParserRuleRunner<T, S extends TreeItem<T>>  {
         public index: number,
         public startIndex: number,
         public path: PathItem[],
+        public args: any[],
         public subject: S,
     ) { }
 
@@ -31,6 +32,14 @@ export class ParserRuleRunner<T, S extends TreeItem<T>>  {
     public getToken() {
         return this.tokens[this.index];
     }
+
+    getArgs(count: number): any[] {
+        if ( this.args.length !== count ){
+            throw new Error("wrong agrument count in " + this.factory.name);
+        }
+        return this.args;
+    }
+
 
     public error(message: string) {
         throw ParserError.create(new Error(message), this.tokens[this.index], this.path);
@@ -74,13 +83,14 @@ export class ParserRuleRunner<T, S extends TreeItem<T>>  {
     public expectRule(
         ruleName: string,
         action: (token: TreeItem<T>) => void,
+        args: any[] = []
     ): boolean {
 
         let rule = this.factory.repository[ruleName];
         if (!rule) { throw new Error("Parser Rule Not Found: " + ruleName); }
 
         if (this.index >= this.tokens.length) { return false; }
-        let ruleResult = rule.test(this.parser, this.tokens, this.index, [], this.path);
+        let ruleResult = rule.test(this.parser, this.tokens, this.index, args, this.path);
 
         if (ruleResult) {
             this.index = ruleResult.newIndex;
@@ -187,6 +197,7 @@ export class ParserRuleFactory<T, S extends TreeItem<T>> extends AParserRule<T, 
             index,
             startIndex,
             path,
+            args,
             result
         );
 

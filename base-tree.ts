@@ -34,8 +34,8 @@ export class BaseSyntaxTree<T> {
                 result.push([contentItem.token, '', '<i>' + contentItem.name + '</i>', 0, comment]);
             }
             if (contentItem instanceof TreeItemNode) {
-                if (contentItem.item) {
-                    this.report(contentItem.name, contentItem.item, result, comment || contentItem.item.comment);
+                if (contentItem.node) {
+                    this.report(contentItem.name, contentItem.node, result, comment || contentItem.node.comment);
                 }
             }
         });
@@ -84,8 +84,8 @@ export abstract class TreeItem<T> {
         if (first instanceof TreeItemToken) {
             return first.token;
         }
-        if (first instanceof TreeItemNode && first.item) {
-            return first.item.getFirstToken();
+        if (first instanceof TreeItemNode && first.node) {
+            return first.node.getFirstToken();
         }
         return null;
     }
@@ -98,8 +98,8 @@ export abstract class TreeItem<T> {
         if (last instanceof TreeItemToken) {
             return last.token;
         }
-        if (last instanceof TreeItemNode && last.item) {
-            return last.item.getLastToken();
+        if (last instanceof TreeItemNode && last.node) {
+            return last.node.getLastToken();
         }
         return null;
     }
@@ -135,7 +135,7 @@ export abstract class TreeItem<T> {
                 let nameString: string = item.name;
                 while (nameString.length < maxNameLen) { nameString += ' '; }
                 console.info(spacePrefix + '..' + nameString + ': ');
-                (<TreeItem<T>>item.item).print(spacePrefix + '  - ');
+                (<TreeItem<T>>item.node).print(spacePrefix + '  - ');
             }
         });
     }
@@ -151,6 +151,12 @@ export class TreeItemToken<T> {
         this.parent.content.push(this);
         this.token = token;
     }
+    setTransient(token: BaseParserToken<T>) {
+        if (this.token) { throw new Error("cannot reassign token value!"); }
+        this.token = token;
+        return this;
+    }
+
     firstToken(): BaseParserToken<T> | null {
         return this.token;
     }
@@ -160,25 +166,30 @@ export class TreeItemToken<T> {
 }
 
 export class TreeItemNode<T> {
-    public item: TreeItem<T> | null = null;
+    public node: TreeItem<T> | null = null;
     private _first_token: BaseParserToken<T> | null = null;
     private _last_token: BaseParserToken<T> | null = null;
-    constructor(private parent: TreeItem<T>, public name: string) {
+    constructor(public parent: TreeItem<T>, public name: string) {
     }
     set(item: TreeItem<T>) {
-        if (this.item) { throw new Error("cannot reassign node value!"); }
+        if (this.node) { throw new Error("cannot reassign node value!"); }
         this.parent.content.push(this);
-        this.item = item;
+        this.node = item;
+    }
+    setTransient(item: TreeItem<T>) {
+        if (this.node) { throw new Error("cannot reassign node value!"); }
+        this.node = item;
+        return this;
     }
     firstToken(): BaseParserToken<T> | null {
         if (!this._first_token) {
-            this._first_token = this.item ? this.item.getFirstToken() : null;
+            this._first_token = this.node ? this.node.getFirstToken() : null;
         }
         return this._first_token;
     }
     lastToken(): BaseParserToken<T> | null {
         if (!this._last_token) {
-            this._last_token = this.item ? this.item.getLastToken() : null;
+            this._last_token = this.node ? this.node.getLastToken() : null;
         }
         return this._last_token;
     }

@@ -97,7 +97,7 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
 
     abstract process(): void;
 
-  
+
 
     format(tree: BaseSyntaxTree<T>): string {
         tree.items.forEach(treeItem => {
@@ -128,8 +128,8 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
                 this.tokens.push(extToken);
                 this.tokenMap[posId] = extToken;
             }
-            if (contentItem instanceof TreeItemNode && contentItem.item) {
-                this.collectItems(contentItem.item);
+            if (contentItem instanceof TreeItemNode && contentItem.node) {
+                this.collectItems(contentItem.node);
             }
         });
     }
@@ -184,10 +184,10 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
         childWalker.breakBeforeList = itemWalker.breakBeforeList;
 
         item.content.forEach((contentItem, idx) => {
-            if (contentItem instanceof TreeItemNode && contentItem.item) {
+            if (contentItem instanceof TreeItemNode && contentItem.node) {
                 // für diesen durchlauf vorbereiten
-                childWalker.actualItem = contentItem.item;
-                childWalker.actualToken = contentItem.item.getFirstToken();
+                childWalker.actualItem = contentItem.node;
+                childWalker.actualToken = contentItem.node.getFirstToken();
 
                 if (tasks.indent && childWalker.actualToken) {
                     let extToken = this.getToken(childWalker.actualToken);
@@ -199,7 +199,7 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
                 // durchlauf
                 this.walkItem(tasks, childWalker, callback);
                 // für nächsten durchlauf vorbereiten
-                childWalker.lastItem = contentItem.item;
+                childWalker.lastItem = contentItem.node;
             }
             if (contentItem instanceof TreeItemToken && contentItem.token) {
                 let token = this.getToken(contentItem.token);
@@ -282,6 +282,7 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
     printOut() {
         let lineContent: { [posId: string]: ExtendedToken<T>[] } = {};
         this.tokens.forEach(token => {
+            if (token.toLine < 0) { throw new Error('negatve line ' + JSON.stringify(token)); }
             let lineString = '' + token.toLine;
             if (!lineContent[lineString]) { lineContent[lineString] = []; }
             lineContent[lineString].push(token);
@@ -366,7 +367,7 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
         return this.tokenMap[posId];
     }
 
-    
+
 
     getActualLine(token: BaseParserToken<T>): number {
         let actToken = this.getToken(token);
@@ -445,7 +446,7 @@ export abstract class BaseFormater<T> extends BaseTreeProcessor<T> {
         let [start, end, seperatorName] = supplier();
         if (!this.isSameLine(start, end)) {
             this.breakAfter(item, walker, start);
-            this.foreachNodeChildsByName(item, seperatorName, ti => {
+            this.foreachItemsByName(item, seperatorName, ti => {
                 let lastToken = ti.lastToken();
                 if (lastToken) {
                     this.breakAfter(item, walker, lastToken);
